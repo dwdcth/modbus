@@ -2,8 +2,17 @@ package modbus
 
 import (
 	"fmt"
-	"os"
 	"log"
+	"os"
+)
+
+type LogSaver interface {
+	Write(dir int, url string, station string, data []byte)
+}
+
+const (
+	DirTx = iota + 1
+	DirRx
 )
 
 type logger struct {
@@ -13,7 +22,7 @@ type logger struct {
 
 func newLogger(prefix string, customLogger *log.Logger) (l *logger) {
 	l = &logger{
-		prefix:	prefix,
+		prefix:       prefix,
 		customLogger: customLogger,
 	}
 

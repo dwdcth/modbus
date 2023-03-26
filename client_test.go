@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+type MyLog struct {
+}
+
+func (l *MyLog) Write(dir int, url string, station string, data []byte) {
+	fmt.Printf("%d %s %s [% x]\n", dir, url, station, data)
+}
+
 func TestClient(t *testing.T) {
 	var client *ModbusClient
 	var err error
@@ -18,6 +25,7 @@ func TestClient(t *testing.T) {
 		Parity:   PARITY_NONE, // default, optional
 		StopBits: 1,           // default if no parity, optional
 		Timeout:  300 * time.Millisecond,
+		LSaver:   &MyLog{},
 	})
 
 	if err != nil {

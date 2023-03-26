@@ -19,11 +19,13 @@ type tcpTransport struct {
 	timeout   time.Duration
 	lastTxnId uint16
 	addr      string
+	LSaver    LogSaver
 }
 
 // Returns a new TCP transport.
-func newTCPTransport(url string, socket net.Conn, timeout time.Duration, customLogger *log.Logger) (tt *tcpTransport) {
+func newTCPTransport(lSaver LogSaver, url string, socket net.Conn, timeout time.Duration, customLogger *log.Logger) (tt *tcpTransport) {
 	tt = &tcpTransport{
+		LSaver:  lSaver,
 		addr:    url,
 		socket:  socket,
 		timeout: timeout,
@@ -51,16 +53,19 @@ func (tt *tcpTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 	// increase the transaction ID counter
 	tt.lastTxnId++
 
-	//todo log  frame 没问题
 	frame := tt.assembleMBAPFrame(tt.lastTxnId, req)
 	_, err = tt.socket.Write(frame)
+	if tt.LSaver != nil {
+		tt.LSaver.Write(DirTx, tt.addr, fmt.Sprintf("%d", req.unitId), frame)
+	}
 	if err != nil {
 		return
 	}
 	var raw []byte
 	res, raw, err = tt.readResponse()
-	//todo log res 没问题
-	fmt.Println(raw)
+	if tt.LSaver != nil {
+		tt.LSaver.Write(DirRx, tt.addr, fmt.Sprintf("%d", res.unitId), raw)
+	}
 	return
 }
 

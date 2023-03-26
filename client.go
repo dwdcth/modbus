@@ -57,6 +57,7 @@ type ClientConfiguration struct {
 	// Logger provides a custom sink for log messages.
 	// If nil, messages will be written to stdout.
 	Logger *log.Logger
+	LSaver LogSaver
 }
 
 // Modbus client object.
@@ -226,7 +227,7 @@ func (mc *ModbusClient) Open() (err error) {
 		discard(spw)
 
 		// create the RTU transport
-		mc.transport = newRTUTransport(
+		mc.transport = newRTUTransport(mc.conf.LSaver,
 			spw, mc.conf.URL, mc.conf.Speed, mc.conf.Timeout, mc.conf.Logger)
 
 	case modbusRTUOverTCP:
@@ -240,7 +241,7 @@ func (mc *ModbusClient) Open() (err error) {
 		discard(sock)
 
 		// create the RTU transport
-		mc.transport = newRTUTransport(
+		mc.transport = newRTUTransport(mc.conf.LSaver,
 			sock, mc.conf.URL, mc.conf.Speed, mc.conf.Timeout, mc.conf.Logger)
 
 	case modbusRTUOverUDP:
@@ -254,7 +255,7 @@ func (mc *ModbusClient) Open() (err error) {
 		// create the RTU transport, wrapping the UDP socket in
 		// an adapter to allow the transport to read the stream of
 		// packets byte per byte
-		mc.transport = newRTUTransport(
+		mc.transport = newRTUTransport(mc.conf.LSaver,
 			newUDPSockWrapper(sock),
 			mc.conf.URL, mc.conf.Speed, mc.conf.Timeout, mc.conf.Logger)
 
@@ -266,7 +267,7 @@ func (mc *ModbusClient) Open() (err error) {
 		}
 
 		// create the TCP transport
-		mc.transport = newTCPTransport(mc.conf.URL, sock, mc.conf.Timeout, mc.conf.Logger)
+		mc.transport = newTCPTransport(mc.conf.LSaver, mc.conf.URL, sock, mc.conf.Timeout, mc.conf.Logger)
 
 	case modbusTCPOverTLS:
 		// connect to the remote host with TLS
@@ -294,7 +295,7 @@ func (mc *ModbusClient) Open() (err error) {
 		}
 
 		// create the TCP transport
-		mc.transport = newTCPTransport(mc.conf.URL, sock, mc.conf.Timeout, mc.conf.Logger)
+		mc.transport = newTCPTransport(mc.conf.LSaver, mc.conf.URL, sock, mc.conf.Timeout, mc.conf.Logger)
 
 	case modbusTCPOverUDP:
 		// open a socket to the remote host (note: no actual connection is
@@ -307,7 +308,7 @@ func (mc *ModbusClient) Open() (err error) {
 		// create the TCP transport, wrapping the UDP socket in
 		// an adapter to allow the transport to read the stream of
 		// packets byte per byte
-		mc.transport = newTCPTransport(mc.conf.URL,
+		mc.transport = newTCPTransport(mc.conf.LSaver, mc.conf.URL,
 			newUDPSockWrapper(sock), mc.conf.Timeout, mc.conf.Logger)
 
 	default:

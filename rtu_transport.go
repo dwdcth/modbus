@@ -19,6 +19,7 @@ type rtuTransport struct {
 	t35          time.Duration
 	t1           time.Duration
 	addr         string
+	LSaver       LogSaver
 }
 
 type rtuLink interface {
@@ -29,8 +30,9 @@ type rtuLink interface {
 }
 
 // Returns a new RTU transport.
-func newRTUTransport(link rtuLink, addr string, speed uint, timeout time.Duration, customLogger *log.Logger) (rt *rtuTransport) {
+func newRTUTransport(lSaver LogSaver, link rtuLink, addr string, speed uint, timeout time.Duration, customLogger *log.Logger) (rt *rtuTransport) {
 	rt = &rtuTransport{
+		LSaver:  lSaver,
 		logger:  newLogger(fmt.Sprintf("rtu-transport(%s)", addr), customLogger),
 		link:    link,
 		timeout: timeout,
@@ -81,7 +83,9 @@ func (rt *rtuTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 	// build an RTU ADU out of the request object and
 	// send the final ADU+CRC on the wire
 	adu := rt.assembleRTUFrame(req)
-	//todo log
+	if rt.LSaver != nil {
+		rt.LSaver.Write(DirTx, rt.addr, fmt.Sprintf("%d", req.unitId), adu)
+	}
 	n, err = rt.link.Write(adu)
 	if err != nil {
 		return
@@ -97,7 +101,9 @@ func (rt *rtuTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 	var raw []byte
 	// read the response back from the wire
 	res, raw, err = rt.readRTUFrame()
-	fmt.Println(raw)
+	if rt.LSaver != nil {
+		rt.LSaver.Write(DirTx, rt.addr, fmt.Sprintf("%d", res.unitId), raw)
+	}
 	if err == ErrBadCRC || err == ErrProtocolError || err == ErrShortFrame {
 		// wait for and flush any data coming off the link to allow
 		// devices to re-sync

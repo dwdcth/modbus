@@ -36,6 +36,7 @@ type ServerConfiguration struct {
 	// Logger provides a custom sink for log messages.
 	// If nil, messages will be written to stdout.
 	Logger *log.Logger
+	LSaver LogSaver
 }
 
 // Request object passed to the coil handler.
@@ -338,7 +339,7 @@ func (ms *ModbusServer) handleTCPClient(sock net.Conn) {
 	case modbusTCP:
 		// serve modbus requests over the raw TCP connection
 		ms.handleTransport(
-			newTCPTransport(ms.conf.URL, sock, ms.conf.Timeout, ms.conf.Logger),
+			newTCPTransport(ms.conf.LSaver, ms.conf.URL, sock, ms.conf.Timeout, ms.conf.Logger),
 			sock.RemoteAddr().String(), "")
 
 	case modbusTCPOverTLS:
@@ -350,7 +351,7 @@ func (ms *ModbusServer) handleTCPClient(sock net.Conn) {
 		} else {
 			// serve modbus requests over the TLS tunnel
 			ms.handleTransport(
-				newTCPTransport(ms.conf.URL, tlsSock, ms.conf.Timeout, ms.conf.Logger),
+				newTCPTransport(ms.conf.LSaver, ms.conf.URL, tlsSock, ms.conf.Timeout, ms.conf.Logger),
 				sock.RemoteAddr().String(), clientRole)
 		}
 
