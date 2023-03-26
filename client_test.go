@@ -12,7 +12,7 @@ func TestClient(t *testing.T) {
 
 	// for an RTU (serial) device/bus
 	client, err = NewClient(&ClientConfiguration{
-		URL:      "rtu://COM1",
+		URL:      "tcp://127.0.0.1:502",
 		Speed:    9600,        // default
 		DataBits: 8,           // default, optional
 		Parity:   PARITY_NONE, // default, optional

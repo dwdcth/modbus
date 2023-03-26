@@ -18,11 +18,13 @@ type tcpTransport struct {
 	socket    net.Conn
 	timeout   time.Duration
 	lastTxnId uint16
+	addr      string
 }
 
 // Returns a new TCP transport.
-func newTCPTransport(socket net.Conn, timeout time.Duration, customLogger *log.Logger) (tt *tcpTransport) {
+func newTCPTransport(url string, socket net.Conn, timeout time.Duration, customLogger *log.Logger) (tt *tcpTransport) {
 	tt = &tcpTransport{
+		addr:    url,
 		socket:  socket,
 		timeout: timeout,
 		logger:  newLogger(fmt.Sprintf("tcp-transport(%s)", socket.RemoteAddr()), customLogger),
@@ -49,14 +51,16 @@ func (tt *tcpTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 	// increase the transaction ID counter
 	tt.lastTxnId++
 
-	//todo log
-	_, err = tt.socket.Write(tt.assembleMBAPFrame(tt.lastTxnId, req))
+	//todo log  frame 没问题
+	frame := tt.assembleMBAPFrame(tt.lastTxnId, req)
+	_, err = tt.socket.Write(frame)
 	if err != nil {
 		return
 	}
-
-	res, err = tt.readResponse()
-	//todo log
+	var raw []byte
+	res, raw, err = tt.readResponse()
+	//todo log res 没问题
+	fmt.Println(raw)
 	return
 }
 
@@ -70,7 +74,7 @@ func (tt *tcpTransport) ReadRequest() (req *pdu, err error) {
 		return
 	}
 
-	req, txnId, err = tt.readMBAPFrame()
+	req, _, txnId, err = tt.readMBAPFrame()
 	if err != nil {
 		return
 	}
@@ -93,12 +97,12 @@ func (tt *tcpTransport) WriteResponse(res *pdu) (err error) {
 
 // Reads as many MBAP+modbus frames as necessary until either the response
 // matching tt.lastTxnId is received or an error occurs.
-func (tt *tcpTransport) readResponse() (res *pdu, err error) {
+func (tt *tcpTransport) readResponse() (res *pdu, raw []byte, err error) {
 	var txnId uint16
 
 	for {
 		// grab a frame
-		res, txnId, err = tt.readMBAPFrame()
+		res, raw, txnId, err = tt.readMBAPFrame()
 
 		// ignore unknown protocol identifiers
 		if err == ErrUnknownProtocolId {
@@ -125,7 +129,7 @@ func (tt *tcpTransport) readResponse() (res *pdu, err error) {
 }
 
 // Reads an entire frame (MBAP header + modbus PDU) from the socket.
-func (tt *tcpTransport) readMBAPFrame() (p *pdu, txnId uint16, err error) {
+func (tt *tcpTransport) readMBAPFrame() (p *pdu, raw []byte, txnId uint16, err error) {
 	var rxbuf []byte
 	var bytesNeeded int
 	var protocolId uint16
@@ -137,7 +141,7 @@ func (tt *tcpTransport) readMBAPFrame() (p *pdu, txnId uint16, err error) {
 	if err != nil {
 		return
 	}
-
+	raw = rxbuf
 	// decode the transaction identifier
 	txnId = bytesToUint16(BIG_ENDIAN, rxbuf[0:2])
 	// decode the protocol identifier
@@ -169,7 +173,7 @@ func (tt *tcpTransport) readMBAPFrame() (p *pdu, txnId uint16, err error) {
 	if err != nil {
 		return
 	}
-
+	raw = append(raw, rxbuf...)
 	// validate the protocol identifier
 	if protocolId != 0x0000 {
 		err = ErrUnknownProtocolId
