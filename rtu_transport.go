@@ -83,7 +83,7 @@ func (rt *rtuTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 	// build an RTU ADU out of the request object and
 	// send the final ADU+CRC on the wire
 	adu := rt.assembleRTUFrame(req)
-	if rt.LSaver != nil {
+	if rt.LSaver != nil && req != nil {
 		rt.LSaver.Write(DirTx, rt.addr, fmt.Sprintf("%d", req.unitId), adu)
 	}
 	n, err = rt.link.Write(adu)
@@ -101,7 +101,7 @@ func (rt *rtuTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 	var raw []byte
 	// read the response back from the wire
 	res, raw, err = rt.readRTUFrame()
-	if rt.LSaver != nil {
+	if rt.LSaver != nil && res != nil {
 		rt.LSaver.Write(DirTx, rt.addr, fmt.Sprintf("%d", res.unitId), raw)
 	}
 	if err == ErrBadCRC || err == ErrProtocolError || err == ErrShortFrame {

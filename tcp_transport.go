@@ -55,7 +55,7 @@ func (tt *tcpTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 
 	frame := tt.assembleMBAPFrame(tt.lastTxnId, req)
 	_, err = tt.socket.Write(frame)
-	if tt.LSaver != nil {
+	if tt.LSaver != nil && req != nil {
 		tt.LSaver.Write(DirTx, tt.addr, fmt.Sprintf("%d", req.unitId), frame)
 	}
 	if err != nil {
@@ -63,7 +63,7 @@ func (tt *tcpTransport) ExecuteRequest(req *pdu) (res *pdu, err error) {
 	}
 	var raw []byte
 	res, raw, err = tt.readResponse()
-	if tt.LSaver != nil {
+	if tt.LSaver != nil && res != nil {
 		tt.LSaver.Write(DirRx, tt.addr, fmt.Sprintf("%d", res.unitId), raw)
 	}
 	return
